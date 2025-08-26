@@ -46,4 +46,13 @@ export class AuthService {
 
     return { user: user.toSafeObject, token };
   }
+
+  async me(email: string) {
+    const user = await this.userService.getByEmail(email);
+    if (!user) {
+      throw CustomError.notFound('User not found');
+    }
+
+    return user.toSafeObject;
+  }
 }

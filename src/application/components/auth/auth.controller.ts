@@ -26,3 +26,16 @@ export const login = async (req: Request, res: Response) => {
   res.cookie('jwt', token, { expires: tokenExpirationDate, httpOnly: true, secure: secureCookie });
   return ResponseHandler.success(res, { user }, HttpStatusCode.OK);
 };
+
+export const me = async (req: Request, res: Response) => {
+  const { email } = req.body.user;
+
+  const user = await authService.me(email);
+
+  return ResponseHandler.success(res, { user }, HttpStatusCode.OK);
+};
+
+export const logout = async (_req: Request, res: Response) => {
+  res.clearCookie('jwt');
+  return ResponseHandler.success(res, null, HttpStatusCode.OK);
+}
