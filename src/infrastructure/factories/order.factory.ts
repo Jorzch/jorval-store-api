@@ -1,13 +1,11 @@
-import { CartItem } from '@/domain/entities/cart-item.entity';
-import { Cart } from '@/domain/entities/cart.entity';
 import { Order, OrderDetails } from '@/domain/entities/order.entity';
 import { Order as PrismaOrder } from '@prisma/client';
 import { v4 } from 'uuid';
 
 export class OrderFactory {
-  static createFromMinimalInputs(cartItems: CartItem[]) {
+  static createFromMinimalInputs(cartItems: OrderDetails['products']) {
     const total = cartItems.reduce(
-      (acc, cartItem) => acc + cartItem.toSafeObject.quantity * cartItem.toSafeObject.Product.price,
+      (acc, cartItem) => acc + cartItem.quantity * cartItem.Product.price,
       0
     );
 

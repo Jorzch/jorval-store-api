@@ -35,7 +35,7 @@ export const removeProductFromCart = async (req: Request, res: Response) => {
 export const checkout = async (req: Request, res: Response) => {
   const { email } = req.body.user;
 
-  await cartService.checkout(email);
+  const order = await cartService.checkout(email);
 
-  return ResponseHandler.success(res, null, HttpStatusCode.OK);
+  return ResponseHandler.success(res, order.toSafeObject, HttpStatusCode.OK);
 };

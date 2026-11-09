@@ -9,7 +9,7 @@ async function main() {
   await baseLoader(app);
 
   const server = app
-    .listen(8000, () => {
+    .listen(env.PORT, () => {
       logger.info(`
         ######################################
         🛡️  Server listening on port: ${env.PORT} 🛡️

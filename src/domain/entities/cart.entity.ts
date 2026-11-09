@@ -17,7 +17,7 @@ export class Cart extends iEntity {
   get toSafeObject() {
     return {
       id: this.id,
-      CartItems: this.CartItems,
+      CartItems: this.CartItems.map((item) => item.toSafeObject),
     };
   }
 

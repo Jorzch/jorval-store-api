@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaModule } from '../modules/prisma';
 import { CartFactory } from '../factories/cart.factory';
 import { Cart } from '@/domain/entities/cart.entity';
@@ -6,6 +6,8 @@ import { User } from '@/domain/entities/user.entity';
 import { Product } from '@/domain/entities/product.entity';
 import { CartItemFactory } from '../factories/cart-item.factory';
 import { CartItem } from '@/domain/entities/cart-item.entity';
+import { CustomError } from '@/domain/errors/custom.error';
+import { OrderFactory } from '../factories/order.factory';
 
 export class CartRepository {
   private readonly client: PrismaClient;
@@ -111,5 +113,39 @@ export class CartRepository {
         id: cartItem.toSafeObject.id,
       },
     });
+  }
+
+  async checkout(cartId: string) {
+    try {
+      return await this.client.$transaction(async (tx) => {
+        const data = await tx.cart.findUnique({
+          where: { id: cartId },
+          include: { User: true, CartItems: { include: { Product: true } } },
+        });
+        if (!data) throw CustomError.notFound('Cart not found');
+        if (data.CartItems.length === 0) throw CustomError.badRequest('Cart is empty');
+
+        for (const item of data.CartItems) {
+          const updated = await tx.product.updateMany({
+            where: { id: item.productId, stock: { gte: item.quantity } },
+            data: { stock: { decrement: item.quantity } },
+          });
+          if (updated.count !== 1) throw CustomError.badRequest('Not enough stock');
+        }
+
+        const cart = CartFactory.createFromDb(data);
+        const order = OrderFactory.createFromMinimalInputs(cart.toSafeObject.CartItems);
+        const created = await tx.order.create({
+          data: { userId: data.userId, details: JSON.stringify(order.toSafeObject.details) },
+        });
+        await tx.cartItem.deleteMany({ where: { cartId } });
+        return OrderFactory.createFromDb(created);
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2034') {
+        throw CustomError.badRequest('Cart or stock changed. Please try checkout again.');
+      }
+      throw err;
+    }
   }
 }

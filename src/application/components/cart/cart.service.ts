@@ -4,19 +4,16 @@ import { CartRepository } from '@/infrastructure/repositories/cart.repository';
 import { UserService } from '../users/user.service';
 import { CustomError } from '@/domain/errors/custom.error';
 import { ProductService } from '../products/product.service';
-import { OrderService } from '../orders/order.service';
 
 export class CartService {
   private cartRepository: CartRepository;
   private userService: UserService;
   private productService: ProductService;
-  private orderService: OrderService;
 
   constructor() {
     this.cartRepository = new CartRepository();
     this.userService = new UserService();
     this.productService = new ProductService();
-    this.orderService = new OrderService();
   }
 
   async create(user: User) {
@@ -54,9 +51,9 @@ export class CartService {
         throw CustomError.badRequest('Not enough stock');
       }
       productInCart.setQuantity(newQuantity);
-      this.cartRepository.updateCartItem(productInCart);
+      await this.cartRepository.updateCartItem(productInCart);
     } else {
-      this.cartRepository.createCartItem(cart, product, quantity);
+      await this.cartRepository.createCartItem(cart, product, quantity);
     }
   }
 
@@ -70,21 +67,14 @@ export class CartService {
     } else if (productInCart.toSafeObject.quantity > quantity) {
       const newQuantity = productInCart.toSafeObject.quantity - quantity;
       productInCart.setQuantity(newQuantity);
-      this.cartRepository.updateCartItem(productInCart);
+      await this.cartRepository.updateCartItem(productInCart);
     } else {
-      this.cartRepository.deleteCartItem(productInCart);
+      await this.cartRepository.deleteCartItem(productInCart);
     }
   }
 
   async checkout(userEmail: string) {
     const cart = await this.getByUserEmail(userEmail);
-    const cartItems = cart.toSafeObject.CartItems;
-
-    for (const cartItem of cartItems) {
-      await this.productService.reduceStock(cartItem.toSafeObject.Product.slug, cartItem.toSafeObject.quantity);
-      await this.cartRepository.deleteCartItem(cartItem);
-    }
-
-    return this.orderService.create(cart);
+    return this.cartRepository.checkout(cart.toSafeObject.id);
   }
 }
